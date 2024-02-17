@@ -24,59 +24,55 @@ namespace NetworkReceiver
             string outputFile = args[1];
 
             udpClient = new UdpClient(port);
-            remoteEndPoint = new IPEndPoint(IPAddress.Any, 0);
+            remoteEndPoint = new IPEndPoint(IPAddress.Any, port);
             fileStream = File.OpenWrite(outputFile);
 
             while (true)
             {
                 Console.WriteLine("ON WHILE");
                 byte[] data = udpClient.Receive(ref remoteEndPoint);
+                Console.WriteLine(data.ToString());
                 Console.WriteLine("RECEIVED");
                 ProcessReceivedData(data);
-                // Implement connection termination logic based on received flags (RST, FIN)
-                // ...
+                //TODO implement behavior for the several flags
 
-                // Send ACK packet with the sequence number of the last received packet
                 SendAckPacket(GetLastSequenceNumber(data));
             }
         }
 
         static void ProcessReceivedData(byte[] data)
         {
-            // Implement logic to process received data and write to the file stream
-            // For simplicity, just write the received data to the file
+            //TODO write data
             fileStream.Write(data, 0, data.Length);
         }
 
         static void SendAckPacket(ushort lastSequenceNumber)
         {
             byte[] ackData = BitConverter.GetBytes(lastSequenceNumber);
-            byte[] ackPacket = ConstructPacket(0, 0, 0, 0, ackData);
+            byte[] ackPacket = CreatePacket(0, 0, 0, 0, 0, ackData);
 
             udpClient.Send(ackPacket, ackPacket.Length, remoteEndPoint);
         }
 
         static ushort GetLastSequenceNumber(byte[] data)
         {
-            //For now, seq numb juste be last to
+            //TODO check for sequence number behavior
             return BitConverter.ToUInt16(data, data.Length - 2);
         }
 
-        static byte[] ConstructPacket(ushort sequenceNumber, byte synFlag, byte ackFlag, byte finFlag, byte[] data)
+        static byte[] CreatePacket(ushort sequenceNumber, byte synFlag, byte ackFlag, byte finFlag, byte rstFlag, byte[]? data = null)
         {
-            // Implement logic to construct a packet with given parameters
-            byte[] packet = new byte[2 + 2 + 1 + 1 + 1 + data.Length];
+            byte[] packet = new byte[6 + (data != null ? data.Length : 0)];
 
-            // Copy sequence number
             BitConverter.GetBytes(sequenceNumber).CopyTo(packet, 0);
 
-            // Set flags
             packet[2] = synFlag;
             packet[3] = ackFlag;
             packet[4] = finFlag;
+            packet[5] = rstFlag;
 
-            // Copy data
-            data.CopyTo(packet, 5);
+            if (data != null)
+                data.CopyTo(packet, 6);
 
             return packet;
         }

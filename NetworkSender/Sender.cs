@@ -37,17 +37,13 @@ namespace NetworkSender
             SendSynPacket();
             while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0)
             {
-                // bytesRead contiendra le nombre d'octets réellement lus dans le fichier
 
-                // Utilisez un tableau plus petit si bytesRead est inférieur à la taille du tampon
                 byte[] dataToSend = new byte[bytesRead];
                 Array.Copy(buffer, dataToSend, bytesRead);
 
-                // À ce stade, dataToSend contient les données lues du fichier sous forme de byte[]
-                // Vous pouvez maintenant les utiliser pour construire et envoyer des paquets
-                SendDataPacket(dataToSend, currentSequenceNumber);
-
-                // Mettez à jour le numéro de séquence pour le prochain paquet
+                byte[] dataPacket = CreateDataPacket(dataToSend);
+                udpClient.Send(dataPacket, dataPacket.Length, remoteEndPoint);
+                Console.WriteLine("DATA SEND");
                 currentSequenceNumber++;
             }
             SendFinPacket();
@@ -55,8 +51,8 @@ namespace NetworkSender
 
         static void SendSynPacket()
         {
-            byte[] synPacket = ConstructPacket(0, 1, 0, 0, new byte[0]);
-            Console.WriteLine("TEST");
+            currentSequenceNumber = 0;
+            byte[] synPacket = CreatePacket(1, 0, 0, 0, new byte[0]);
             udpClient.Send(synPacket, synPacket.Length, remoteEndPoint);
 
             // Wait for SYN-ACK
@@ -64,24 +60,26 @@ namespace NetworkSender
             ushort synAckSequenceNumber = GetLastSequenceNumber(synAckData);
 
             // Respond with final SYN
-            byte[] finalSynPacket = ConstructPacket(synAckSequenceNumber, 1, 0, 0, new byte[0]);
+            byte[] finalSynPacket = CreatePacket(1, 0, 0, 0);
             udpClient.Send(finalSynPacket, finalSynPacket.Length, remoteEndPoint);
         }
 
-        static void SendDataPacket(byte[] data, ushort sequenceNumber)
+        static void SendDataPacket(byte[] data)
         {
-            byte[] dataPacket = ConstructPacket(sequenceNumber, 0, 0, 0, data);
+            byte[] dataPacket = CreateDataPacket(data);
             udpClient.Send(dataPacket, dataPacket.Length, remoteEndPoint);
         }
 
         static void SendFinPacket()
         {
-            //TODO
+            byte[] finPacket = CreatePacket(0, 0, 1, 0, null);
+            udpClient.Send(finPacket, finPacket.Length, remoteEndPoint);
         }
 
         static void SendRstPacket()
         {
-            //TODO
+            byte[] rstPacket = CreatePacket(0, 0, 0, 1, null);
+            udpClient.Send(rstPacket, rstPacket.Length, remoteEndPoint);
         }
 
         static ushort GetLastSequenceNumber(byte[] data)
@@ -90,24 +88,29 @@ namespace NetworkSender
             return BitConverter.ToUInt16(data, data.Length - 2);
         }
 
-        static byte[] ConstructPacket(ushort sequenceNumber, byte synFlag, byte ackFlag, byte finFlag, byte[] data)
+        static byte[] CreateDataPacket(byte[] data)
         {
-            // Implement logic to construct a packet with given parameters
-            byte[] packet = new byte[ 5 + data.Length];
+            return CreatePacket(0, 0, 0, 0, data);
+        }
 
-            // Copy sequence number
-            BitConverter.GetBytes(sequenceNumber).CopyTo(packet, 0);
+        static byte[] CreatePacket(byte synFlag, byte ackFlag, byte finFlag, byte rstFlag, byte[]? data = null)
+        {
+            byte[] packet = new byte[5 + (data != null ? data.Length : 0)];
 
-            // Set flags
+            BitConverter.GetBytes(currentSequenceNumber).CopyTo(packet, 0);
+
             packet[2] = synFlag;
             packet[3] = ackFlag;
             packet[4] = finFlag;
+            packet[5] = rstFlag;
 
-            // Copy data
-            data.CopyTo(packet, 5);
+            if (data != null)
+                data.CopyTo(packet, 6);
 
             return packet;
         }
+
+
     }
 
 }
