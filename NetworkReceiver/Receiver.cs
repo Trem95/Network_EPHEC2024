@@ -19,7 +19,7 @@ namespace NetworkReceiver
                 Console.WriteLine("Usage: Receiver <port> <outputFile>");
                 return;
             }
-
+            Console.WriteLine("TEST");
             int port = int.Parse(args[0]);
             string outputFile = args[1];
 
@@ -29,9 +29,10 @@ namespace NetworkReceiver
 
             while (true)
             {
+                Console.WriteLine("ON WHILE");
                 byte[] data = udpClient.Receive(ref remoteEndPoint);
+                Console.WriteLine("RECEIVED");
                 ProcessReceivedData(data);
-
                 // Implement connection termination logic based on received flags (RST, FIN)
                 // ...
 

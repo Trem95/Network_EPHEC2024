@@ -12,6 +12,7 @@ namespace NetworkSender
         static UdpClient udpClient;
         static IPEndPoint remoteEndPoint;
         static FileStream fileStream;
+        static ushort currentSequenceNumber = 0;
 
         static void Main(string[] args)
         {
@@ -30,21 +31,32 @@ namespace NetworkSender
             fileStream = File.OpenRead(inputFile);
 
             // Implement connection initiation logic (SYN) and data transmission
-            SendSynPacket();
-            
-            //TODO add behavior for sending packet
-            //- check if all packet come to right receiver
-            //- manage sequence number
-            //- manage re send of packet if loss
+            byte[] buffer = new byte[1024]; // Taille du tampon de lecture, à ajuster selon vos besoins
+            int bytesRead;
 
-            // Implement connection termination logic (FIN, RST)
+            SendSynPacket();
+            while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                // bytesRead contiendra le nombre d'octets réellement lus dans le fichier
+
+                // Utilisez un tableau plus petit si bytesRead est inférieur à la taille du tampon
+                byte[] dataToSend = new byte[bytesRead];
+                Array.Copy(buffer, dataToSend, bytesRead);
+
+                // À ce stade, dataToSend contient les données lues du fichier sous forme de byte[]
+                // Vous pouvez maintenant les utiliser pour construire et envoyer des paquets
+                SendDataPacket(dataToSend, currentSequenceNumber);
+
+                // Mettez à jour le numéro de séquence pour le prochain paquet
+                currentSequenceNumber++;
+            }
             SendFinPacket();
         }
 
         static void SendSynPacket()
         {
             byte[] synPacket = ConstructPacket(0, 1, 0, 0, new byte[0]);
-
+            Console.WriteLine("TEST");
             udpClient.Send(synPacket, synPacket.Length, remoteEndPoint);
 
             // Wait for SYN-ACK
