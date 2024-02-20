@@ -46,12 +46,37 @@ namespace NetworkReceiver
             fileStream.Write(data, 0, data.Length);
         }
 
+        static void ManageSenderPacket()
+        {
+
+            //TODO method to set the behavior when get a packet from sender
+            switch (switch_on)
+            {
+                default:
+            }
+        }
+
         static void SendAckPacket(ushort lastSequenceNumber)
         {
             byte[] ackData = BitConverter.GetBytes(lastSequenceNumber);
             byte[] ackPacket = CreatePacket(0, 0, 0, 0, 0, ackData);
 
             udpClient.Send(ackPacket, ackPacket.Length, remoteEndPoint);
+        }
+
+        static void SendFinPacket(ushort lastSequenceNumber)
+        {
+            //TODO
+        }
+
+        static void SendRstPacket(ushort lastSequenceNumber)
+        {
+            //TODO
+        }
+
+        static void SendSynPacket(ushort lastSequenceNumber) 
+        {
+            //TODO
         }
 
         static ushort GetLastSequenceNumber(byte[] data)

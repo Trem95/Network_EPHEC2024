@@ -95,7 +95,7 @@ namespace NetworkSender
 
         static byte[] CreatePacket(byte synFlag, byte ackFlag, byte finFlag, byte rstFlag, byte[]? data = null)
         {
-            byte[] packet = new byte[5 + (data != null ? data.Length : 0)];
+            byte[] packet = new byte[6 + (data != null ? data.Length : 0)];
 
             BitConverter.GetBytes(currentSequenceNumber).CopyTo(packet, 0);
 
