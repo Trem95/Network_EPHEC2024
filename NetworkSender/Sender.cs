@@ -9,6 +9,7 @@ namespace NetworkSender
 
     class Sender
     {
+        static TcpClient tcpClient;
         static UdpClient udpClient;
         static IPEndPoint remoteEndPoint;
         static FileStream fileStream;
@@ -19,6 +20,7 @@ namespace NetworkSender
             if (args.Length != 3)
             {
                 Console.WriteLine("Usage: Sender <receiverIp> <receiverPort> <inputFile>");
+                Console.ReadLine();
                 return;
             }
 
@@ -27,26 +29,33 @@ namespace NetworkSender
             string inputFile = args[2];
 
             udpClient = new UdpClient();
+            tcpClient = new TcpClient();
             remoteEndPoint = new IPEndPoint(IPAddress.Parse(receiverIp), receiverPort);
             fileStream = File.OpenRead(inputFile);
 
             // Implement connection initiation logic (SYN) and data transmission
-            byte[] buffer = new byte[1024]; // Taille du tampon de lecture, à ajuster selon vos besoins
+            byte[] buffer = new byte[1024]; // TODO check for length
             int bytesRead;
 
-            SendSynPacket();
-            while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0)
+            tcpClient.Connect(remoteEndPoint);
+            if (tcpClient.Connected)
             {
+                //TODO set 
+                SendSynPacket();
+                while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0)
+                {
 
-                byte[] dataToSend = new byte[bytesRead];
-                Array.Copy(buffer, dataToSend, bytesRead);
+                    byte[] dataToSend = new byte[bytesRead];
+                    Array.Copy(buffer, dataToSend, bytesRead);
 
-                byte[] dataPacket = CreateDataPacket(dataToSend);
-                udpClient.Send(dataPacket, dataPacket.Length, remoteEndPoint);
-                Console.WriteLine("DATA SEND");
-                currentSequenceNumber++;
+                    byte[] dataPacket = CreateDataPacket(dataToSend);
+                    udpClient.Send(dataPacket, dataPacket.Length, remoteEndPoint);
+                    Console.WriteLine("DATA SEND");
+                    currentSequenceNumber++;
+                }
+                SendFinPacket();
             }
-            SendFinPacket();
+
         }
 
         static void SendSynPacket()

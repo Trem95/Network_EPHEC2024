@@ -8,6 +8,7 @@ namespace NetworkReceiver
 {
     class Receiver
     {
+        static TcpClient tcpClient;
         static UdpClient udpClient;
         static IPEndPoint remoteEndPoint;
         static FileStream fileStream;
@@ -17,12 +18,14 @@ namespace NetworkReceiver
             if (args.Length != 2)
             {
                 Console.WriteLine("Usage: Receiver <port> <outputFile>");
+                Console.ReadLine();
                 return;
             }
-            Console.WriteLine("TEST");
+
             int port = int.Parse(args[0]);
             string outputFile = args[1];
 
+            tcpClient = new TcpClient();
             udpClient = new UdpClient(port);
             remoteEndPoint = new IPEndPoint(IPAddress.Any, port);
             fileStream = File.OpenWrite(outputFile);
@@ -45,17 +48,15 @@ namespace NetworkReceiver
             //TODO write data
             fileStream.Write(data, 0, data.Length);
         }
-
         static void ManageSenderPacket()
         {
 
             //TODO method to set the behavior when get a packet from sender
-            switch (switch_on)
-            {
-                default:
-            }
+            //switch (switch_on)
+            //{
+            //    default:
+            //}
         }
-
         static void SendAckPacket(ushort lastSequenceNumber)
         {
             byte[] ackData = BitConverter.GetBytes(lastSequenceNumber);
@@ -63,7 +64,6 @@ namespace NetworkReceiver
 
             udpClient.Send(ackPacket, ackPacket.Length, remoteEndPoint);
         }
-
         static void SendFinPacket(ushort lastSequenceNumber)
         {
             //TODO
@@ -74,7 +74,7 @@ namespace NetworkReceiver
             //TODO
         }
 
-        static void SendSynPacket(ushort lastSequenceNumber) 
+        static void SendSynPacket(ushort lastSequenceNumber)
         {
             //TODO
         }
@@ -89,7 +89,7 @@ namespace NetworkReceiver
         {
             byte[] packet = new byte[6 + (data != null ? data.Length : 0)];
 
-            BitConverter.GetBytes(sequenceNumber).CopyTo(packet, 0);
+            BitConverter.GetBytes(sequenceNumber).CopyTo(packet, 0);//TODO create class for binary encoder / decoder
 
             packet[2] = synFlag;
             packet[3] = ackFlag;
