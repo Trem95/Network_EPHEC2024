@@ -19,7 +19,6 @@ namespace NetworkReceiver
         static BinaryReader binaryReader;
 
         static Timer timer;
-        static bool isOutOfTime;
         static void Main(string[] args)
         {
             if (args.Length != 2)
@@ -36,13 +35,18 @@ namespace NetworkReceiver
             remoteEndPoint = new IPEndPoint(IPAddress.Any, port);
 
             byte[] dataReceived;
-            isOutOfTime = false;
             fileStream = File.OpenWrite(outputFile);
-            timer = new Timer(OutOfTimeCallBack, null, 0, 30000);
             do
             {
-                dataReceived = udpClient.Receive(ref remoteEndPoint);
-                timer = new Timer(OutOfTimeCallBack, null, 0, 5000);
+                timer = new Timer(callback: OutOfTimeCallBack, null, 10000, 10000);
+                try
+                {
+                    dataReceived = udpClient.Receive(ref remoteEndPoint);
+                }
+                catch (SocketException)
+                {
+                    break;
+                }
                 Console.Write(DateTime.Now.TimeOfDay + ">> ");
                 foreach (byte data in dataReceived)
                     Console.Write(data);
@@ -51,10 +55,10 @@ namespace NetworkReceiver
                 SendAckPacket(GetLastSequenceNumber(dataReceived));
 
             }
-            while ((dataReceived != null && dataReceived.Length > 0) || isOutOfTime);
+            while ((dataReceived != null && dataReceived.Length > 0));
             fileStream.Close();
             Console.WriteLine("END");
-            Console.ReadLine();
+            Environment.Exit(0);
             #region AVRO
 
             //using (memoryStream)
@@ -82,7 +86,9 @@ namespace NetworkReceiver
         {
             if (data.Length > 7)
             {
-                memoryStream = new MemoryStream(data);
+                byte[] dataToRead = new byte[data.Length - 6];
+                data.CopyTo(dataToRead, 7);
+                memoryStream = new MemoryStream(dataToRead);
 
                 using (memoryStream)
                 {
@@ -91,7 +97,7 @@ namespace NetworkReceiver
                     while (memoryStream.Position < memoryStream.Length)
                     {
                         //TODO Behavior flags
-                        byte[] dataRead = binaryReader.ReadBytes(data.Length);
+                        byte[] dataRead = binaryReader.ReadBytes(dataToRead.Length);
                         fileStream.Write(dataRead);
                     }
                 }
@@ -154,7 +160,9 @@ namespace NetworkReceiver
 
         private static void OutOfTimeCallBack(Object o)
         {
-            isOutOfTime = true;
+            Console.WriteLine("OUT OF TIME");
+            udpClient.Close();
+            timer = null;
         }
 
         enum StateFlag
