@@ -1,18 +1,25 @@
-﻿using System;
-using System.IO;
+﻿using Confluent.SchemaRegistry.Serdes;
+using Microsoft.Hadoop.Avro;
+using Microsoft.Hadoop.Avro.Container;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
+
 
 namespace NetworkReceiver
 {
     class Receiver
     {
-        static TcpClient tcpClient;
         static UdpClient udpClient;
         static IPEndPoint remoteEndPoint;
-        static FileStream fileStream;
 
+        static FileStream fileStream;
+        static MemoryStream memoryStream;
+
+        static BinaryDecoder binaryDecoder;
+        static BinaryReader binaryReader;
+
+        static Timer timer;
+        static bool isOutOfTime;
         static void Main(string[] args)
         {
             if (args.Length != 2)
@@ -25,28 +32,71 @@ namespace NetworkReceiver
             int port = int.Parse(args[0]);
             string outputFile = args[1];
 
-            tcpClient = new TcpClient();
             udpClient = new UdpClient(port);
             remoteEndPoint = new IPEndPoint(IPAddress.Any, port);
+
+            byte[] dataReceived;
+            isOutOfTime = false;
             fileStream = File.OpenWrite(outputFile);
-
-            while (true)
+            timer = new Timer(OutOfTimeCallBack, null, 0, 30000);
+            do
             {
-                Console.WriteLine("ON WHILE");
-                byte[] data = udpClient.Receive(ref remoteEndPoint);
-                Console.WriteLine(data.ToString());
-                Console.WriteLine("RECEIVED");
-                ProcessReceivedData(data);
-                //TODO implement behavior for the several flags
+                dataReceived = udpClient.Receive(ref remoteEndPoint);
+                timer = new Timer(OutOfTimeCallBack, null, 0, 5000);
+                Console.Write(DateTime.Now.TimeOfDay + ">> ");
+                foreach (byte data in dataReceived)
+                    Console.Write(data);
+                Console.WriteLine();
+                ProcessReceivedData(dataReceived);
+                SendAckPacket(GetLastSequenceNumber(dataReceived));
 
-                SendAckPacket(GetLastSequenceNumber(data));
             }
+            while ((dataReceived != null && dataReceived.Length > 0) || isOutOfTime);
+            fileStream.Close();
+            Console.WriteLine("END");
+            Console.ReadLine();
+            #region AVRO
+
+            //using (memoryStream)
+            //{
+            //    binaryDecoder = new BinaryDecoder(memoryStream);
+
+            //    using (var dataReader = AvroContainer.CreateGenericReader(memoryStream))
+            //    {
+            //        while (dataReader.MoveNext())
+            //        {
+            //            var dataRead = dataReader.Current;
+
+            //        }
+            //    }
+
+            //}
+            #endregion
+            //ProcessReceivedData(data);
+            //SendAckPacket(GetLastSequenceNumber(data));
+
+
         }
 
         static void ProcessReceivedData(byte[] data)
         {
-            //TODO write data
-            fileStream.Write(data, 0, data.Length);
+            if (data.Length > 7)
+            {
+                memoryStream = new MemoryStream(data);
+
+                using (memoryStream)
+                {
+                    binaryReader = new BinaryReader(memoryStream);
+
+                    while (memoryStream.Position < memoryStream.Length)
+                    {
+                        //TODO Behavior flags
+                        byte[] dataRead = binaryReader.ReadBytes(data.Length);
+                        fileStream.Write(dataRead);
+                    }
+                }
+            }
+
         }
         static void ManageSenderPacket()
         {
@@ -100,6 +150,19 @@ namespace NetworkReceiver
                 data.CopyTo(packet, 6);
 
             return packet;
+        }
+
+        private static void OutOfTimeCallBack(Object o)
+        {
+            isOutOfTime = true;
+        }
+
+        enum StateFlag
+        {
+            ON_LISTEN,
+            ON_RECEIVED,
+            ON_SENT,
+            ON_STOP
         }
     }
 }

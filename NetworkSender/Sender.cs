@@ -9,7 +9,6 @@ namespace NetworkSender
 
     class Sender
     {
-        static TcpClient tcpClient;
         static UdpClient udpClient;
         static IPEndPoint remoteEndPoint;
         static FileStream fileStream;
@@ -29,7 +28,6 @@ namespace NetworkSender
             string inputFile = args[2];
 
             udpClient = new UdpClient();
-            tcpClient = new TcpClient();
             remoteEndPoint = new IPEndPoint(IPAddress.Parse(receiverIp), receiverPort);
             fileStream = File.OpenRead(inputFile);
 
@@ -37,24 +35,22 @@ namespace NetworkSender
             byte[] buffer = new byte[1024]; // TODO check for length
             int bytesRead;
 
-            tcpClient.Connect(remoteEndPoint);
-            if (tcpClient.Connected)
+
+            //TODO set 
+            SendSynPacket();
+            while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0)
             {
-                //TODO set 
-                SendSynPacket();
-                while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0)
-                {
 
-                    byte[] dataToSend = new byte[bytesRead];
-                    Array.Copy(buffer, dataToSend, bytesRead);
+                byte[] dataToSend = new byte[bytesRead];
+                Array.Copy(buffer, dataToSend, bytesRead);
 
-                    byte[] dataPacket = CreateDataPacket(dataToSend);
-                    udpClient.Send(dataPacket, dataPacket.Length, remoteEndPoint);
-                    Console.WriteLine("DATA SEND");
-                    currentSequenceNumber++;
-                }
-                SendFinPacket();
+                byte[] dataPacket = CreateDataPacket(dataToSend);
+                udpClient.Send(dataPacket, dataPacket.Length, remoteEndPoint);
+                Console.WriteLine("DATA SEND");
+                currentSequenceNumber++;
             }
+            SendFinPacket();
+
 
         }
 
