@@ -12,7 +12,7 @@ namespace NetworkSender
         static UdpClient udpClient;
         static IPEndPoint remoteEndPoint;
         static FileStream fileStream;
-        static ushort currentSequenceNumber = 0;
+        static ushort currentSequenceNumber;
 
         static void Main(string[] args)
         {
@@ -27,6 +27,7 @@ namespace NetworkSender
             int receiverPort = int.Parse(args[1]);
             string inputFile = args[2];
 
+            currentSequenceNumber = (ushort)new Random().Next(42);
             udpClient = new UdpClient();
             remoteEndPoint = new IPEndPoint(IPAddress.Parse(receiverIp), receiverPort);
             fileStream = File.OpenRead(inputFile);
@@ -63,10 +64,6 @@ namespace NetworkSender
             // Wait for SYN-ACK
             byte[] synAckData = udpClient.Receive(ref remoteEndPoint);
             ushort synAckSequenceNumber = GetLastSequenceNumber(synAckData);
-
-            // Respond with final SYN
-            byte[] finalSynPacket = CreatePacket(1, 0, 0, 0);
-            udpClient.Send(finalSynPacket, finalSynPacket.Length, remoteEndPoint);
         }
 
         static void SendDataPacket(byte[] data)

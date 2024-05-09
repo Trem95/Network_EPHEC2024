@@ -18,6 +18,8 @@ namespace NetworkReceiver
         static BinaryDecoder binaryDecoder;
         static BinaryReader binaryReader;
 
+        static ushort currentSequenceNumber;
+
         static Timer timer;
         static void Main(string[] args)
         {
@@ -33,6 +35,7 @@ namespace NetworkReceiver
 
             udpClient = new UdpClient(port);
             remoteEndPoint = new IPEndPoint(IPAddress.Any, port);
+            currentSequenceNumber = (ushort)new Random().Next(42);
 
             byte[] dataReceived;
             fileStream = File.OpenWrite(outputFile);
@@ -53,31 +56,13 @@ namespace NetworkReceiver
                 Console.WriteLine();
                 ProcessReceivedData(dataReceived);
                 SendAckPacket(GetLastSequenceNumber(dataReceived));
+                timer.Dispose();
 
             }
             while ((dataReceived != null && dataReceived.Length > 0));
             fileStream.Close();
             Console.WriteLine("END");
             Environment.Exit(0);
-            #region AVRO
-
-            //using (memoryStream)
-            //{
-            //    binaryDecoder = new BinaryDecoder(memoryStream);
-
-            //    using (var dataReader = AvroContainer.CreateGenericReader(memoryStream))
-            //    {
-            //        while (dataReader.MoveNext())
-            //        {
-            //            var dataRead = dataReader.Current;
-
-            //        }
-            //    }
-
-            //}
-            #endregion
-            //ProcessReceivedData(data);
-            //SendAckPacket(GetLastSequenceNumber(data));
 
 
         }
@@ -130,10 +115,17 @@ namespace NetworkReceiver
             //TODO
         }
 
-        static void SendSynPacket(ushort lastSequenceNumber)
+
+        static void SendSynAckPacket(ushort lastSequenceNumber)
         {
-            //TODO
+            byte[] ackData = BitConverter.GetBytes(lastSequenceNumber);
+            byte[] synAckPacket = CreatePacket(currentSequenceNumber, 1, 0, 0, 0,ackData);
+
+            udpClient.Send(synAckPacket, synAckPacket.Length, remoteEndPoint);
+
         }
+
+
 
         static ushort GetLastSequenceNumber(byte[] data)
         {
@@ -165,12 +157,6 @@ namespace NetworkReceiver
             timer = null;
         }
 
-        enum StateFlag
-        {
-            ON_LISTEN,
-            ON_RECEIVED,
-            ON_SENT,
-            ON_STOP
-        }
+       
     }
 }
