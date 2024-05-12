@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using NetworkToolBox;
 
 namespace NetworkSender
 {
@@ -13,6 +14,7 @@ namespace NetworkSender
         static IPEndPoint remoteEndPoint;
         static FileStream fileStream;
         static ushort currentSequenceNumber;
+        static Timer timer;
 
         static void Main(string[] args)
         {
@@ -36,9 +38,36 @@ namespace NetworkSender
             byte[] buffer = new byte[1024]; // TODO check for length
             int bytesRead;
 
+            //OPEN CONNECTION
+            udpClient.SendSynPacket(currentSequenceNumber, remoteEndPoint);
 
-            //TODO set 
-            SendSynPacket();
+            currentSequenceNumber++;
+            // Wait for SYN-ACK
+
+            int cdwStartConnection = 0;
+            while (cdwStartConnection < 3)
+            {
+                try
+                {
+
+                    try
+                    {
+                        timer = new Timer(callback: ToolBox.OutOfTimeCallBack, null, 5000, 0);
+                        byte[] synAckData = udpClient.Receive(ref remoteEndPoint);
+                        ushort synAckSequenceNumber = GetLastSequenceNumber(synAckData);//TODO Check for sequence number
+                        cdwStartConnection = 3;
+                    }
+                    catch (TimeoutException)
+                    {
+                        udpClient.Close();
+                    }
+                }
+                catch (SocketException)
+                {
+                    cdwStartConnection++;
+                }
+            }
+
             while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0)
             {
 
@@ -55,16 +84,6 @@ namespace NetworkSender
 
         }
 
-        static void SendSynPacket()
-        {
-            currentSequenceNumber = 0;
-            byte[] synPacket = CreatePacket(1, 0, 0, 0, new byte[0]);
-            udpClient.Send(synPacket, synPacket.Length, remoteEndPoint);
-
-            // Wait for SYN-ACK
-            byte[] synAckData = udpClient.Receive(ref remoteEndPoint);
-            ushort synAckSequenceNumber = GetLastSequenceNumber(synAckData);
-        }
 
         static void SendDataPacket(byte[] data)
         {

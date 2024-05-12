@@ -13,4 +13,8 @@
     <PackageReference Include="Simplr.Core.Avro" Version="0.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\NetworkToolBox\NetworkToolBox.csproj" />
+  </ItemGroup>
+
 </Project>
