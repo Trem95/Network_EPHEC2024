@@ -33,4 +33,6 @@ utilisation du NetworkSender :
 - NetworkSender.exe <Adresse Ip du NetworkReceiver> <Port du NetworkReceiver> <Nom fichier texte à envoyer + extension>
 
 - Pour un déroulement parfait des opération, lancer le receiver qui écoutera sur tout les ports et ensuite le sender pour envoyer votre fichier.
-- Á la fin, les programmes se coupe et vous reprenez le controle de l'invit de commande
+- Á la fin, les programmes se coupe et vous reprenez le controle de l'invit de commande 
+
+Antoine T & Sebastien W
