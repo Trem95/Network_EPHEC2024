@@ -90,10 +90,6 @@ namespace NetworkSender
         {
             byte[] byteFlag = new byte[4];
 
-            if (data[33] == 1)
-            {
-
-            }
             if (data[33] == 1 && data[34] == 1)//FIN
             {
                 ToolBox.ShowLog("SENDER: " + "CONNEXION ENDED");

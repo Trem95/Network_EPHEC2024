@@ -61,7 +61,7 @@ namespace NetworkReceiver
             }
             while ((dataReceived != null && dataReceived.Length > 0) && !finalizeConnexion);
             fileStream.Close();
-            ToolBox.ShowLog("RECEIVER: " + "CONNXEION ENDED");
+            ToolBox.ShowLog("RECEIVER: " + "CONNEXION ENDED");
             Environment.Exit(0);
 
 
@@ -104,7 +104,6 @@ namespace NetworkReceiver
             else if (data.Length > 35)
             {
                 byte[] dataToRead = data.Where(b => Array.IndexOf(data, b) > 35).ToArray<byte>();
-                ToolBox.ShowLog("RECEIVER : DATA TO READ : " + dataToRead.Length);
                 memoryStream = new MemoryStream(dataToRead);
                 using (memoryStream)
                 {
