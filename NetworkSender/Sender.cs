@@ -54,7 +54,7 @@ namespace NetworkSender
                     {
                         timer = new Timer(callback: ToolBox.OutOfTimeCallBack, null, 5000, 0);
                         byte[] synAckData = udpClient.Receive(ref remoteEndPoint);
-                        ushort synAckSequenceNumber = GetLastSequenceNumber(synAckData);//TODO Check for sequence number
+                        ushort synAckSequenceNumber = ToolBox.GetLastSequenceNumber(synAckData);
                         cdwStartConnection = 3;
                     }
                     catch (TimeoutException)
@@ -79,57 +79,18 @@ namespace NetworkSender
                 Console.WriteLine("DATA SEND");
                 currentSequenceNumber++;
             }
-            SendFinPacket();
+            udpClient.SendFinPacket(currentSequenceNumber,remoteEndPoint);
 
 
         }
 
 
-        static void SendDataPacket(byte[] data)
-        {
-            byte[] dataPacket = CreateDataPacket(data);
-            udpClient.Send(dataPacket, dataPacket.Length, remoteEndPoint);
-        }
-
-        static void SendFinPacket()
-        {
-            byte[] finPacket = CreatePacket(0, 0, 1, 0, null);
-            udpClient.Send(finPacket, finPacket.Length, remoteEndPoint);
-        }
-
-        static void SendRstPacket()
-        {
-            byte[] rstPacket = CreatePacket(0, 0, 0, 1, null);
-            udpClient.Send(rstPacket, rstPacket.Length, remoteEndPoint);
-        }
-
-        static ushort GetLastSequenceNumber(byte[] data)
-        {
-            // last two bytes is seq numb (see if ok ) 
-            return BitConverter.ToUInt16(data, data.Length - 2);
-        }
 
         static byte[] CreateDataPacket(byte[] data)
         {
-            return CreatePacket(0, 0, 0, 0, data);
+            return ToolBox.CreatePacket(currentSequenceNumber,0, 0, 0, 0, data);
         }
 
-        static byte[] CreatePacket(byte synFlag, byte ackFlag, byte finFlag, byte rstFlag, byte[]? data = null)
-        {
-            byte[] packet = new byte[6 + (data != null ? data.Length : 0)];
-
-            BitConverter.GetBytes(currentSequenceNumber).CopyTo(packet, 0);
-
-            packet[2] = synFlag;
-            packet[3] = ackFlag;
-            packet[4] = finFlag;
-            packet[5] = rstFlag;
-
-            if (data != null)
-                data.CopyTo(packet, 6);
-
-            return packet;
-        }
 
 
     }
