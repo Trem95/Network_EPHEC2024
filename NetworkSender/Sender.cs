@@ -14,13 +14,13 @@ namespace NetworkSender
         static IPEndPoint remoteEndPoint;
         static FileStream fileStream;
         static ushort currentSequenceNumber;
-        static Timer timer;
-
+        static bool finalizeConnexion = false;
+        static Thread cptThread;
         static void Main(string[] args)
         {
             if (args.Length != 3)
             {
-                Console.WriteLine("Usage: Sender <receiverIp> <receiverPort> <inputFile>");
+                Console.WriteLine("Usage: NetworkSender.exe <receiverIp> <receiverPort> <inputFile>");
                 Console.ReadLine();
                 return;
             }
@@ -34,15 +34,14 @@ namespace NetworkSender
             remoteEndPoint = new IPEndPoint(IPAddress.Parse(receiverIp), receiverPort);
             fileStream = File.OpenRead(inputFile);
 
-            // Implement connection initiation logic (SYN) and data transmission
-            byte[] buffer = new byte[1024]; // TODO check for length
+
+            byte[] buffer = new byte[1024];
             int bytesRead;
 
             //OPEN CONNECTION
             udpClient.SendSynPacket(currentSequenceNumber, remoteEndPoint);
 
             currentSequenceNumber++;
-            // Wait for SYN-ACK
 
             int cdwStartConnection = 0;
             while (cdwStartConnection < 3)
@@ -50,49 +49,70 @@ namespace NetworkSender
                 try
                 {
 
-                    try
-                    {
-                        timer = new Timer(callback: ToolBox.OutOfTimeCallBack, null, 5000, 0);
-                        byte[] synAckData = udpClient.Receive(ref remoteEndPoint);
-                        ushort synAckSequenceNumber = ToolBox.GetLastSequenceNumber(synAckData);
-                        cdwStartConnection = 3;
-                    }
-                    catch (TimeoutException)
-                    {
-                        udpClient.Close();
-                    }
+                    byte[] synAckData = udpClient.Receive(ref remoteEndPoint);
+                    int synAckSequenceNumber = ToolBox.GetLastSequenceNumber(synAckData);
+                    cdwStartConnection = 3;
+
                 }
                 catch (SocketException)
                 {
                     cdwStartConnection++;
                 }
+                catch (Exception e)
+                {
+                    ToolBox.ShowLog("SENDER : ERROR : " + e.Message);
+                    udpClient.SendRstPacket(currentSequenceNumber, remoteEndPoint);
+                    udpClient.Close();
+                }
             }
 
-            while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0)
+            while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0 || finalizeConnexion)
             {
 
                 byte[] dataToSend = new byte[bytesRead];
                 Array.Copy(buffer, dataToSend, bytesRead);
 
-                byte[] dataPacket = CreateDataPacket(dataToSend);
+                byte[] dataPacket = ToolBox.CreatePacket(currentSequenceNumber, 0, 0, 0, 0, dataToSend);
+                string msg = "SENDER : ";
+                foreach (byte b in dataPacket)
+                    msg += b;
+                ToolBox.ShowLog(msg);
                 udpClient.Send(dataPacket, dataPacket.Length, remoteEndPoint);
-                Console.WriteLine("DATA SEND");
                 currentSequenceNumber++;
             }
-            udpClient.SendFinPacket(currentSequenceNumber,remoteEndPoint);
+            udpClient.SendFinPacket(currentSequenceNumber, remoteEndPoint);
+            ProcessReceivedData(udpClient.Receive(ref remoteEndPoint));
 
 
         }
 
-
-
-        static byte[] CreateDataPacket(byte[] data)
+        static void ProcessReceivedData(byte[] data)
         {
-            return ToolBox.CreatePacket(currentSequenceNumber,0, 0, 0, 0, data);
+            byte[] byteFlag = new byte[4];
+
+            if (data[33] == 1)
+            {
+
+            }
+            if (data[33] == 1 && data[34] == 1)//FIN
+            {
+                ToolBox.ShowLog("SENDER: " + "CONNEXION ENDED");
+                finalizeConnexion = true;
+
+            }
+            else if (data[35] == 1)//RST
+            {
+                ToolBox.ShowLog("SENDER: " + "Send RST Packet");
+                udpClient.SendRstPacket(ToolBox.GetLastSequenceNumber(data), remoteEndPoint);
+                finalizeConnexion = true;
+            }
+            else if ((data[32] == 1 && data[33] == 1) || data[32] == 1)
+            {
+                ToolBox.ShowLog("SENDER: " + "Send ACK Packet");
+                udpClient.SendAckPacket(ToolBox.GetLastSequenceNumber(data), remoteEndPoint);
+            }
+
+
         }
-
-
-
     }
-
 }

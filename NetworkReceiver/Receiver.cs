@@ -1,11 +1,6 @@
-﻿using Confluent.SchemaRegistry.Serdes;
-using Microsoft.Hadoop.Avro;
-using Microsoft.Hadoop.Avro.Container;
-using System.ComponentModel;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 using NetworkToolBox;
-
 
 namespace NetworkReceiver
 {
@@ -17,18 +12,17 @@ namespace NetworkReceiver
         static FileStream fileStream;
         static MemoryStream memoryStream;
 
-        static BinaryDecoder binaryDecoder;
         static BinaryReader binaryReader;
 
         static ushort currentSequenceNumber;
+        static bool finalizeConnexion = false;
 
-        static Timer timer;
+
         static void Main(string[] args)
         {
             if (args.Length != 2)
             {
-                Console.WriteLine("Usage: Receiver <port> <outputFile>");
-                Console.ReadLine();
+                Console.WriteLine("Usage: NetworkReceiver <port> <outputFile>");
                 return;
             }
 
@@ -39,11 +33,10 @@ namespace NetworkReceiver
             remoteEndPoint = new IPEndPoint(IPAddress.Any, port);
             currentSequenceNumber = (ushort)new Random().Next(42);
 
-            byte[] dataReceived;
+            byte[] dataReceived = new byte[36];
             fileStream = File.OpenWrite(outputFile);
             do
             {
-                timer = new Timer(callback: OutOfTimeCallBack, null, 10000, 0);
                 try
                 {
                     dataReceived = udpClient.Receive(ref remoteEndPoint);
@@ -51,23 +44,24 @@ namespace NetworkReceiver
                     foreach (byte data in dataReceived)
                         msg += data;
 
-                    ToolBox.ShowLog(msg);
+                    ToolBox.ShowLog("RECEIVER: "+msg);
                     ProcessReceivedData(dataReceived);
-
-                    udpClient.SendAckPacket(GetLastSequenceNumber(dataReceived), remoteEndPoint);
-                    timer.Dispose();
                 }
                 catch (SocketException)
                 {
-                    ToolBox.ShowLog("Timer out of time");
-                    timer.Dispose();
+                    ToolBox.ShowLog("RECEIVER : Timer out of time");
                     break;
+                }
+                catch (Exception e)
+                {
+                    ToolBox.ShowLog("RECEIVER: " + "ERROR : " + e.Message);
+                    udpClient.SendRstPacket(currentSequenceNumber, remoteEndPoint);
                 }
 
             }
-            while ((dataReceived != null && dataReceived.Length > 0));
+            while ((dataReceived != null && dataReceived.Length > 0) && !finalizeConnexion);
             fileStream.Close();
-            ToolBox.ShowLog("END");
+            ToolBox.ShowLog("RECEIVER: " + "CONNXEION ENDED");
             Environment.Exit(0);
 
 
@@ -75,80 +69,58 @@ namespace NetworkReceiver
 
         static void ProcessReceivedData(byte[] data)
         {
-            if (data.Length > 7)
-            {
-                byte[] dataToRead = new byte[data.Length - 6];
-                data.CopyTo(dataToRead, 7);
-                memoryStream = new MemoryStream(dataToRead);
+            byte[] byteFlag = new byte[4];
+            byteFlag[0] = data[32];
+            byteFlag[1] = data[33];
+            byteFlag[2] = data[34];
+            byteFlag[3] = data[35];
 
+
+
+
+            if (data[34] == 1)//FIN
+            {
+                ToolBox.ShowLog("RECEIVER: " + "Send FINACK Packet");
+                udpClient.SendFinAckPacket(ToolBox.GetLastSequenceNumber(data), remoteEndPoint);
+                finalizeConnexion = true;
+
+            }
+            else if (data[35] == 1)//RST
+            {
+                ToolBox.ShowLog("RECEIVER: " + "Send RST Packet");
+                udpClient.SendRstPacket(ToolBox.GetLastSequenceNumber(data), remoteEndPoint);
+                finalizeConnexion = true;
+            }
+            else if((data[32] == 1 && data[33] == 1))
+            {
+                ToolBox.ShowLog("RECEIVER: " + "Send SYN-ACK Packet");
+                udpClient.SendSynAckPacket(ToolBox.GetLastSequenceNumber(data), remoteEndPoint);
+            }
+            else if (data[32] == 1 )
+            {
+                ToolBox.ShowLog("RECEIVER: " + "Send ACK Packet");
+                udpClient.SendAckPacket(ToolBox.GetLastSequenceNumber(data), remoteEndPoint);
+            }
+            else if (data.Length > 35)
+            {
+                byte[] dataToRead = data.Where(b => Array.IndexOf(data, b) > 35).ToArray<byte>();
+                ToolBox.ShowLog("RECEIVER : DATA TO READ : " + dataToRead.Length);
+                memoryStream = new MemoryStream(dataToRead);
                 using (memoryStream)
                 {
                     binaryReader = new BinaryReader(memoryStream);
 
                     while (memoryStream.Position < memoryStream.Length)
                     {
-                        //TODO Behavior flags
                         byte[] dataRead = binaryReader.ReadBytes(dataToRead.Length);
                         fileStream.Write(dataRead);
                     }
                 }
+                ToolBox.ShowLog("RECEIVER: " + "Send ACK Packet");
+                udpClient.SendAckPacket(ToolBox.GetLastSequenceNumber(data), remoteEndPoint);
             }
 
-        }
-        static void ManageSenderPacket()
-        {
 
-            //TODO method to set the behavior when get a packet from sender
-            //switch (switch_on)
-            //{
-            //    default:
-            //}
-        }
-        static void SendAckPacket(ushort lastSequenceNumber)
-        {
-            byte[] ackData = BitConverter.GetBytes(lastSequenceNumber);
-            byte[] ackPacket = CreatePacket(0, 0, 0, 0, 0, ackData);
-
-            udpClient.Send(ackPacket, ackPacket.Length, remoteEndPoint);
-        }
-        static void SendFinPacket(ushort lastSequenceNumber)
-        {
-            //TODO
-        }
-
-        static void SendRstPacket(ushort lastSequenceNumber)
-        {
-            //TODO
-        }
-
-
-        static ushort GetLastSequenceNumber(byte[] data)
-        {
-            return BitConverter.ToUInt16(data, data.Length - 2);
-        }
-
-        static byte[] CreatePacket(ushort sequenceNumber, byte synFlag, byte ackFlag, byte finFlag, byte rstFlag, byte[]? data = null)
-        {
-            byte[] packet = new byte[6 + (data != null ? data.Length : 0)];
-
-            BitConverter.GetBytes(sequenceNumber).CopyTo(packet, 0);//TODO create class for binary encoder / decoder
-
-            packet[2] = synFlag;
-            packet[3] = ackFlag;
-            packet[4] = finFlag;
-            packet[5] = rstFlag;
-
-            if (data != null)
-                data.CopyTo(packet, 6);
-
-            return packet;
-        }
-
-        private static void OutOfTimeCallBack(Object o)
-        {
-            Console.WriteLine("OUT OF TIME");
-            udpClient.Close();
-            timer = null;
         }
 
 

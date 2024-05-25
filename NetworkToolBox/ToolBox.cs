@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NetworkToolBox
 {
@@ -19,33 +13,21 @@ namespace NetworkToolBox
             if (data != null)
             {
                 BitConverter.GetBytes(data.Length).CopyTo(packet, 0);
-                data.CopyTo(packet, 35);
-            }
+                data.CopyTo(packet, 36);
 
-            BitConverter.GetBytes(sequenceNumber).CopyTo(packet, 0);
-            packet[31] = synFlag;
-            packet[32] = ackFlag;
-            packet[33] = finFlag;
-            packet[34] = rstFlag;
+            }
+            BitConverter.GetBytes(sequenceNumber).CopyTo(packet, 16);
+            packet[32] = synFlag;
+            packet[33] = ackFlag;
+            packet[34] = finFlag;
+            packet[35] = rstFlag;
 
             return packet;
         }
 
-        public static byte[] DataToBinary(FileStream fileStream)
-        {
-            //TODO
-            return new byte[0];
-        }
-
-        public static byte[] BinaryToData(byte[] binary)
-        {
-            //TODO
-            return new byte[0];
-        }
 
         public static void SendAckPacket(this UdpClient udpClient, ushort sequenceNumber, IPEndPoint remoteEndPoint)
         {
-            ShowLog("Send ACK Packet");
             byte[] ackData = BitConverter.GetBytes(sequenceNumber);
             byte[] ackPacket = CreatePacket(0, 0, 0, 0, 0, ackData);
             udpClient.Send(ackPacket, ackPacket.Length, remoteEndPoint);
@@ -53,41 +35,46 @@ namespace NetworkToolBox
 
         public static void SendSynPacket(this UdpClient udpClient, ushort sequenceNumber, IPEndPoint remoteEndPoint)
         {
-            ShowLog("Send SYN Packet");
             byte[] synPacket = CreatePacket(sequenceNumber, 1, 0, 0, 0);
             udpClient.Send(synPacket, synPacket.Length, remoteEndPoint);
         }
 
         public static void SendSynAckPacket(this UdpClient udpClient, ushort sequenceNumber, IPEndPoint remoteEndPoint)
         {
-            ShowLog("Send SYN-ACK Packet");
             byte[] synAckPacket = CreatePacket(sequenceNumber, 1, 1, 0, 0);
             udpClient.Send(synAckPacket, synAckPacket.Length, remoteEndPoint);
         }
 
         public static void SendFinPacket(this UdpClient udpClient, ushort sequenceNumber, IPEndPoint remoteEndPoint)
         {
-            ShowLog("Send FIN Packet");
             byte[] finPacket = CreatePacket(sequenceNumber, 0, 0, 1, 0);
             udpClient.Send(finPacket, finPacket.Length, remoteEndPoint);
         }
 
+        public static void SendFinAckPacket(this UdpClient udpClient, ushort sequenceNumber, IPEndPoint remoteEndPoint)
+        {
+            byte[] synAckPacket = CreatePacket(sequenceNumber, 0, 1, 1, 0);
+            udpClient.Send(synAckPacket, synAckPacket.Length, remoteEndPoint);
+        }
+
         public static void SendRstPacket(this UdpClient udpClient, ushort sequenceNumber, IPEndPoint remoteEndPoint)
         {
-            ShowLog("Send RST Packet");
             byte[] finPacket = CreatePacket(sequenceNumber, 0, 0, 1, 0);
             udpClient.Send(finPacket, finPacket.Length, remoteEndPoint);
         }
 
         public static ushort GetLastSequenceNumber(byte[] data)
         {
-            List<byte> reader = new List<byte>();
-            for (int i = 16; i <31; i++)
-            {
-                reader.Add(data[i]);
-            }
+            int cpt = 0;
+            byte[] byteReaded = new byte[16];
 
-            return BitConverter.ToUInt16(data, data.Length - 2);
+            for (int i = 16; i < 32; i++)
+            {
+                byteReaded[cpt] = data[i];
+                cpt++;
+            }
+            return (ushort)BitConverter.ToInt16(byteReaded, 0);
+
         }
 
         public static void ShowLog(string msg)

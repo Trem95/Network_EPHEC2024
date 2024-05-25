@@ -13,10 +13,16 @@ namespace TestProject
 
         static void Main(string[] args)
         {
-            string inputFile = args[1];
-            fileStream = File.OpenRead(inputFile);
 
+            int test = 42;
 
+            byte[] data = new byte[test];
+            foreach (byte b in BitConverter.GetBytes(test))
+            {
+            Console.WriteLine(b);
+
+            }
+            Console.ReadLine();
 
         }
     }

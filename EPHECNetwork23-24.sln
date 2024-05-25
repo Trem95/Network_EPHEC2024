@@ -7,9 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetworkSender", "NetworkSen
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetworkReceiver", "NetworkReceiver\NetworkReceiver.csproj", "{5FF8D7D3-E729-450E-97A5-D38554FADF0E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestProject", "TestProject\TestProject.csproj", "{D3CCFEF7-F0AC-4EA8-B813-63C44CA3A512}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetworkToolBox", "NetworkToolBox\NetworkToolBox.csproj", "{434A1315-E278-44C4-A295-A45B7E9C07B6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetworkToolBox", "NetworkToolBox\NetworkToolBox.csproj", "{434A1315-E278-44C4-A295-A45B7E9C07B6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,10 +23,6 @@ Global
 		{5FF8D7D3-E729-450E-97A5-D38554FADF0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5FF8D7D3-E729-450E-97A5-D38554FADF0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5FF8D7D3-E729-450E-97A5-D38554FADF0E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D3CCFEF7-F0AC-4EA8-B813-63C44CA3A512}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D3CCFEF7-F0AC-4EA8-B813-63C44CA3A512}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D3CCFEF7-F0AC-4EA8-B813-63C44CA3A512}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D3CCFEF7-F0AC-4EA8-B813-63C44CA3A512}.Release|Any CPU.Build.0 = Release|Any CPU
 		{434A1315-E278-44C4-A295-A45B7E9C07B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{434A1315-E278-44C4-A295-A45B7E9C07B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{434A1315-E278-44C4-A295-A45B7E9C07B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
